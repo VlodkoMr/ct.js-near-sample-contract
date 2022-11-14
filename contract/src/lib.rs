@@ -133,7 +133,7 @@ impl Contract {
     }
 
     // For demo only - not safe method!
-    pub fn add_user_scores(&mut self, account_id: AccountId, scores: u32) {
+    pub fn add_user_scores(&mut self, account_id: AccountId, scores: u128) {
         let mut balance = self.user_balance.get(&account_id).unwrap_or(0);
         balance += scores;
         self.user_balance.insert(&account_id, &balance);
