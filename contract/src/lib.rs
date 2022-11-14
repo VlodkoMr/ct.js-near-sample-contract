@@ -106,7 +106,6 @@ impl Contract {
         }
     }
 
-    #[payable]
     pub fn add_ship_series(&mut self, title: String, media: String, max_supply: u32) -> u8 {
         assert_eq!(env::predecessor_account_id(), self.owner_id, "Unauthorized");
         if title.len() < 1 || media.len() < 1 {
@@ -122,6 +121,22 @@ impl Contract {
             minted_total: 0,
         });
         self.total_series
+    }
+
+    pub fn get_user_ships(&self, account_id: AccountId) -> Vec<Ship> {
+        let id_list = self.user_ships.get(&account_id).unwrap_or(vec![]);
+        id_list.into_iter().flat_map(|token_id| self.ships.get(&token_id)).collect()
+    }
+
+    pub fn get_user_scores(&self, account_id: AccountId) -> Balance {
+        self.user_balance.get(&account_id).unwrap_or(0)
+    }
+
+    // For demo only - not safe method!
+    pub fn add_user_scores(&mut self, account_id: AccountId, scores: u32) {
+        let mut balance = self.user_balance.get(&account_id).unwrap_or(0);
+        balance += scores;
+        self.user_balance.insert(&account_id, &balance);
     }
 
     #[payable]
