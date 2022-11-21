@@ -1,5 +1,5 @@
 [package]
-name = "hello_near"
+name = "space_rangers"
 version = "1.0.0"
 authors = ["Near Inc <hello@near.org>"]
 edition = "2021"

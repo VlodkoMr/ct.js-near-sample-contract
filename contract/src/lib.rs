@@ -30,7 +30,7 @@ pub struct Ship {
     speed: u8,
     level: u8,
     max_energy: u8,
-    current_energy: u32,
+    current_energy: u8,
     ship_series: u8,
     last_flight: Timestamp,
 }
@@ -42,10 +42,10 @@ pub struct Contract {
     tokens: NonFungibleToken,
     metadata: LazyOption<NFTContractMetadata>,
     total_series: u8,
-    total_ships: u128,
-    user_balance: LookupMap<AccountId, u128>,
-    ships: LookupMap<u128, Ship>,
-    user_ships: LookupMap<AccountId, Vec<u128>>,
+    total_ships: u32,
+    user_balance: LookupMap<AccountId, u32>,
+    ships: LookupMap<TokenId, Ship>,
+    user_ships: LookupMap<AccountId, Vec<TokenId>>,
     ship_series: UnorderedMap<u8, ShipSeries>,
 }
 
@@ -128,15 +128,36 @@ impl Contract {
         id_list.into_iter().flat_map(|token_id| self.ships.get(&token_id)).collect()
     }
 
-    pub fn get_user_scores(&self, account_id: AccountId) -> Balance {
+    pub fn get_user_scores(&self, account_id: AccountId) -> u32 {
         self.user_balance.get(&account_id).unwrap_or(0)
     }
 
     // For demo only - not safe method!
-    pub fn add_user_scores(&mut self, account_id: AccountId, scores: u128) {
+    pub fn add_user_scores(&mut self, ship_id: TokenId, scores: u32) -> u32 {
+        let account_id = env::predecessor_account_id();
+        let user_ships = self.user_ships.get(&account_id).unwrap();
+        user_ships.into_iter().position(|r| r == ship_id).expect("No spaceship found");
+
+        let mut ship = self.ships.get(&ship_id).unwrap();
+        if ship.current_energy == 0 {
+            env::panic_str("No energy");
+        }
+
+        ship.current_energy -= 1;
+        self.ships.insert(&ship_id, &ship);
+
         let mut balance = self.user_balance.get(&account_id).unwrap_or(0);
         balance += scores;
         self.user_balance.insert(&account_id, &balance);
+
+        balance
+    }
+
+    pub fn request_more_energy(&mut self, ship_id: TokenId) {
+        let mut ship = self.ships.get(&ship_id).unwrap();
+        ship.current_energy = ship.max_energy;
+
+        self.ships.insert(&ship_id, &ship);
     }
 
     #[payable]
@@ -172,7 +193,7 @@ impl Contract {
             reference_hash: None,
         };
 
-        self.ships.insert(&self.total_ships, &Ship {
+        self.ships.insert(&self.total_ships.to_string(), &Ship {
             id: self.total_ships.to_string(),
             health: 10,
             attack: 10,
@@ -184,7 +205,8 @@ impl Contract {
             ship_series: series_id,
             last_flight: 0,
         });
-        self.user_ships.insert(&token_owner_id, &vec![self.total_ships]);
+        let user_ships = vec![self.total_ships.to_string()];
+        self.user_ships.insert(&token_owner_id, &user_ships);
 
         self.tokens.internal_mint(token_id, token_owner_id, Some(token_metadata))
     }
